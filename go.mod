@@ -1,4 +1,4 @@
-module venturo.id/redis
+module github.com/haikalee/goredis
 
 go 1.20
 
