@@ -12,8 +12,8 @@ import (
 )
 
 type Redis struct {
-	*redis.Client
-	ctx context.Context
+	client *redis.Client
+	ctx    context.Context
 }
 
 // CreateConnection is a function to create connection to redis
@@ -46,18 +46,18 @@ func CreateConnection(options structs.Options, ctx context.Context) (*Redis, err
 	}
 
 	return &Redis{
-		Client: client,
+		client: client,
 		ctx:    ctx,
 	}, nil
 }
 
 // Close is a function to close connection to redis
 func (r *Redis) Close() error {
-	if r.Client == nil {
+	if r.client == nil {
 		return errors.New("client connection is empty")
 	}
 
-	if err := r.Client.Close(); err != nil {
+	if err := r.client.Close(); err != nil {
 		log.Println("error close connection :", err.Error())
 		return errors.New("error close connection")
 	}
@@ -68,7 +68,7 @@ func (r *Redis) Close() error {
 
 // Get is a function to get data from redis
 func (r *Redis) Get(key string) (result *string, err error) {
-	if res := r.Client.Get(r.ctx, key); res.Err() != nil {
+	if res := r.client.Get(r.ctx, key); res.Err() != nil {
 		if res.Err().Error() != "redis: nil" {
 			log.Println("error fetch data from redis : ", res.Err().Error())
 			return nil, errors.New("error fetch data from redis")
@@ -89,7 +89,7 @@ func (r *Redis) Get(key string) (result *string, err error) {
 func (r *Redis) GetWithBind(key string, result interface{}) (err error) {
 	/* get redis data */
 	var redisdata string
-	if res := r.Client.Get(r.ctx, key); res.Err() != nil {
+	if res := r.client.Get(r.ctx, key); res.Err() != nil {
 		if res.Err().Error() != "redis: nil" {
 			log.Println("error fetch data from redis : ", res.Err().Error())
 		}
@@ -137,7 +137,7 @@ func (r *Redis) Set(key string, value interface{}, duration *time.Duration) erro
 	}
 
 	/* set data to redis */
-	if res := r.Client.Set(r.ctx, key, data, *duration); res.Err() != nil {
+	if res := r.client.Set(r.ctx, key, data, *duration); res.Err() != nil {
 		log.Println("error set data to redis : ", res.Err().Error())
 		return res.Err()
 	}
@@ -148,7 +148,7 @@ func (r *Redis) Set(key string, value interface{}, duration *time.Duration) erro
 
 // Delete is a function to delete data from redis
 func (r *Redis) Delete(key string) error {
-	if res := r.Client.Del(r.ctx, key); res.Err() != nil {
+	if res := r.client.Del(r.ctx, key); res.Err() != nil {
 		log.Println("error delete data from redis : ", res.Err().Error())
 		return errors.New("error delete data from redis")
 	}
