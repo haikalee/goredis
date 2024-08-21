@@ -7,8 +7,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/haikalee/goredis/structs"
 	"github.com/redis/go-redis/v9"
-	"venturo.id/redis/structs"
 )
 
 type Redis struct {
