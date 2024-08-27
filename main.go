@@ -12,8 +12,10 @@ import (
 )
 
 type Redis struct {
-	client *redis.Client
-	ctx    context.Context
+	client          *redis.Client
+	logger          bool
+	defaultDuration *time.Duration
+	ctx             context.Context
 }
 
 // CreateConnection is a function to create connection to redis
@@ -46,8 +48,10 @@ func CreateConnection(options structs.Options, ctx context.Context) (*Redis, err
 	}
 
 	return &Redis{
-		client: client,
-		ctx:    ctx,
+		client:          client,
+		ctx:             ctx,
+		logger:          options.Logger,
+		defaultDuration: options.DefaultDuration,
 	}, nil
 }
 
@@ -77,10 +81,14 @@ func (r *Redis) Get(key string) (result *string, err error) {
 		return nil, res.Err()
 	} else {
 		if data, err := res.Result(); err != nil {
-			log.Println("error get result redis ; ", err.Error())
+			if r.logger {
+				log.Println("error get result redis ; ", err.Error())
+			}
 			return nil, errors.New("error get redis result")
 		} else {
-			log.Println("successfully fetch data from redis : ", data)
+			if r.logger {
+				log.Println("successfully fetch data from redis : ", data)
+			}
 			return &data, nil
 		}
 	}
@@ -96,10 +104,14 @@ func (r *Redis) GetWithBind(key string, result interface{}) (err error) {
 		return res.Err()
 	} else {
 		if data, err := res.Result(); err != nil {
-			log.Println("error get result redis ; ", err.Error())
+			if r.logger {
+				log.Println("error get result redis ; ", err.Error())
+			}
 			return errors.New("error get redis result")
 		} else {
-			log.Println("successfully fetch data from redis : ", data)
+			if r.logger {
+				log.Println("successfully fetch data from redis : ", data)
+			}
 			redisdata = data
 		}
 	}
@@ -130,10 +142,13 @@ func (r *Redis) Set(key string, value interface{}, duration *time.Duration) erro
 		data = string(res)
 	}
 
-	/* if duration is nil, set data default to 24 hours */
+	/* if duration is nil, set data to default duration */
 	if duration == nil || *duration == 0 {
-		duration = new(time.Duration)
-		*duration = time.Duration(24) * time.Hour
+		duration = r.defaultDuration
+
+		if r.defaultDuration == nil {
+			duration = new(time.Duration)
+		}
 	}
 
 	/* set data to redis */
@@ -142,7 +157,9 @@ func (r *Redis) Set(key string, value interface{}, duration *time.Duration) erro
 		return res.Err()
 	}
 
-	log.Println("successfully set data " + key + " to redis")
+	if r.logger {
+		log.Println("successfully set data " + key + " to redis")
+	}
 	return nil
 }
 
@@ -153,6 +170,34 @@ func (r *Redis) Delete(key string) error {
 		return errors.New("error delete data from redis")
 	}
 
-	log.Println("successfully delete data " + key + " from redis")
+	if r.logger {
+		log.Println("successfully delete data " + key + " from redis")
+	}
 	return nil
+}
+
+func main() {
+	opts := structs.Options{
+		Repository:      "redis-repository",
+		Addr:            "10.12.2.6:6379",
+		Username:        "default",
+		Password:        "pwdev123!",
+		DB:              0,
+		DefaultDuration: nil,
+		Logger:          true,
+	}
+
+	var redis *Redis
+	context := context.Background()
+	if data, err := CreateConnection(opts, context); err != nil {
+		log.Println("error create connection : ", err.Error())
+	} else {
+		redis = data
+		log.Println("successfully create connection")
+	}
+
+	/* set data to redis */
+	if err := redis.Set("test", "test", nil); err != nil {
+		log.Println("error set data to redis : ", err.Error())
+	}
 }
